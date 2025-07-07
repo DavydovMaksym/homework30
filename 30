@@ -1,0 +1,199 @@
+#include <iostream>
+#include <string>
+
+struct TicketNode
+{
+    std::string ticket;
+    TicketNode* next;
+
+    TicketNode(const std::string& t) : ticket(t), next(nullptr) {}
+};
+
+struct Node
+{
+    std::string carNumber;
+    TicketNode* tickets;
+    Node* left;
+    Node* right;
+
+    Node(const std::string& num, const std::string& ticket)
+        : carNumber(num), tickets(new TicketNode(ticket)), left(nullptr), right(nullptr) {}
+};
+
+class TrafficDatabase
+{
+    Node* root;
+
+    Node* insert(Node* node, const std::string& carNumber, const std::string& ticket)
+    {
+        if (node == nullptr)
+        {
+            return new Node(carNumber, ticket);
+        }
+
+        if (carNumber < node->carNumber)
+        {
+            node->left = insert(node->left, carNumber, ticket);
+        }
+        else if (carNumber > node->carNumber)
+        {
+            node->right = insert(node->right, carNumber, ticket);
+        }
+        else
+        {
+            addTicketToList(node->tickets, ticket);
+        }
+
+        return node;
+    }
+
+    void addTicketToList(TicketNode*& head, const std::string& ticket)
+    {
+        TicketNode* newTicket = new TicketNode(ticket);
+        newTicket->next = head;
+        head = newTicket;
+    }
+
+    void printTickets(TicketNode* head) const
+    {
+        TicketNode* current = head;
+        while (current != nullptr)
+        {
+            std::cout << "    - " << current->ticket << '\n';
+            current = current->next;
+        }
+    }
+
+    void printAll(Node* node) const
+    {
+        if (node == nullptr) return;
+
+        printAll(node->left);
+
+        std::cout << "Car number: " << node->carNumber << "\n  Violation:\n";
+        printTickets(node->tickets);
+
+        printAll(node->right);
+    }
+
+    Node* find(Node* node, const std::string& carNumber) const
+    {
+        if (node == nullptr || node->carNumber == carNumber)
+        {
+            return node;
+        }
+
+        if (carNumber < node->carNumber)
+        {
+            return find(node->left, carNumber);
+        }
+        else
+        {
+            return find(node->right, carNumber);
+        }
+    }
+
+    void printInRange(Node* node, const std::string& low, const std::string& high) const {
+        if (node == nullptr)
+        {
+            return;
+        }
+
+        if (low < node->carNumber)
+        {
+            printInRange(node->left, low, high);
+        }
+
+        if (low <= node->carNumber && node->carNumber <= high)
+        {
+            std::cout << "Car number: " << node->carNumber << "\n Violation:\n";
+            printTickets(node->tickets);
+        }
+
+        if (high > node->carNumber)
+        {
+            printInRange(node->right, low, high);
+        }
+    }
+
+    void clearTickets(TicketNode* head)
+    {
+        while (head != nullptr)
+        {
+            TicketNode* tmp = head;
+            head = head->next;
+            delete tmp;
+        }
+    }
+
+    void clear(Node* node)
+    {
+        if (node == nullptr)
+        {
+            return;
+        }
+        clear(node->left);
+        clear(node->right);
+        clearTickets(node->tickets);
+        delete node;
+    }
+
+public:
+    TrafficDatabase() : root(nullptr) {}
+    ~TrafficDatabase()
+    {
+        clear(root);
+    }
+
+    void addTicket(const std::string& carNumber, const std::string& ticket)
+    {
+        root = insert(root, carNumber, ticket);
+    }
+
+    void printDatabase() const
+    {
+        std::cout << "Complete database:\n";
+        printAll(root);
+    }
+
+    void printByCarNumber(const std::string& carNumber) const
+    {
+        Node* node = find(root, carNumber);
+        if (node == nullptr)
+        {
+            std::cout << "Data on the car with the number " << carNumber << " not found.\n";
+        }
+        else
+        {
+            std::cout << "Car number: " << node->carNumber << "\n  Violation:\n";
+            printTickets(node->tickets);
+        }
+    }
+
+    void printByRange(const std::string& from, const std::string& to) const
+    {
+        std::cout << "Data range from " << from << " to " << to << ":\n";
+        printInRange(root, from, to);
+    }
+};
+
+int main()
+{
+    TrafficDatabase db;
+
+    db.addTicket("AA1234BB", "Speeding");
+    db.addTicket("AA1234BB", "Parking in a prohibited place");
+    db.addTicket("BC5678CD", "Driving without a seat belt");
+    db.addTicket("AB1111AB", "Running a red light");
+
+    std::cout << "\nFull base:\n";
+    db.printDatabase();
+
+    std::cout << "\nData by number AA1234BB:\n";
+    db.printByCarNumber("AA1234BB");
+
+    std::cout << "\nData in range [AA0000AA - BC9999ZZ]:\n";
+    db.printByRange("AA0000AA", "BC9999ZZ");
+
+    return 0;
+}
